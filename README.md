@@ -30,3 +30,7 @@ python mountain_car.py --render --episodes 10
 
 Part2:
 python frozen_lake.py
+
+Part3:
+python oop_project_env.py
+
