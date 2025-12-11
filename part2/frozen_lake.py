@@ -22,8 +22,8 @@ def print_success_rate(rewards_per_episode):
     return success_rate
 
 def run(episodes, is_training=True, render=False,
-        learning_rate_a = 0.4901099676146236, epsilon_decay_rate = 0.00001, 
-        min_exploration_rate = 0.00013244005314245704, discount_factor_g = 0.9, end_learning_rate = 0.9):
+        learning_rate_a = 0.5, epsilon_decay_rate = 0.00001, 
+        min_exploration_rate = 0.0001, discount_factor_g = 0.9, end_learning_rate = 0.9):
 
     env = gym.make('FrozenLake-v1', map_name="8x8", is_slippery=True, render_mode='human' if render else None)
 
@@ -53,10 +53,10 @@ def run(episodes, is_training=True, render=False,
                 action = np.argmax(q[state,:])
 
             new_state,reward,terminated,truncated,_ = env.step(action)
-            
+            '''
             if terminated and reward == 0:
                 reward = -1
-            
+            '''
             if is_training:
                 q[state,action] = q[state,action] + learning_rate_a * (
                     reward + discount_factor_g * np.max(q[new_state,:]) - q[state,action]
@@ -67,7 +67,7 @@ def run(episodes, is_training=True, render=False,
         if is_training:
             epsilon = max(epsilon - epsilon_decay_rate, min_exploration_rate)
 
-            if(epsilon==min_exploration_rate):
+            if(epsilon<=min_exploration_rate):
                 learning_rate_a = end_learning_rate
 
         if reward == 1:
@@ -113,7 +113,7 @@ def tune_hyperparameters():
         return run(episodes=EVAL_EPISODES, is_training=False, render=False)
 
     study = optuna.create_study(direction='maximize', sampler =optuna.samplers.TPESampler())
-    study.optimize(objective, n_trials = 3500)
+    study.optimize(objective, n_trials = 50)
 
     print("\nBest parameters found:")
     print(study.best_params)
