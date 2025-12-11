@@ -1,0 +1,7 @@
+{
+    "learning_rate_a": 0.1386981322887949,
+    "min_exploration_rate": 2.4546102008927284e-05,
+    "epsilon_decay_rate": 0.0000701751414966284,
+    "discount_factor_g": 0.9892938428812382,
+    "end_learning_rate": 0.6267812227627596
+}
