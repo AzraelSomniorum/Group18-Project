@@ -11,7 +11,12 @@ from tqdm import tqdm
 #optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 TRAIN_EPISODES = 15000
-EVAL_EPISODES = 500
+EVAL_EPISODES = 800
+
+MAX_EPS = 1
+DISCOUNT_FACTOR_G = 0.999
+
+PHASE_1_RATIO = 0.85
 
 def print_success_rate(rewards_per_episode):
     """Calculate and print the success rate of the agent."""
@@ -21,30 +26,58 @@ def print_success_rate(rewards_per_episode):
     print(f"✅ Success Rate: {success_rate:.2f}% ({int(success_count)} / {total_episodes} episodes)")
     return success_rate
 
-def run(episodes, is_training=True, render=False,
-        learning_rate_a = 0.5, epsilon_decay_rate = 0.00001, 
-        min_exploration_rate = 0.0001, discount_factor_g = 0.9, end_learning_rate = 0.9):
+def get_potential(state, map_size = 8):
+    goal_row, goal_col = 7, 7
+    row, col = state // map_size, state % map_size
+    dist = abs(goal_row - row) + abs(goal_col - col)
+    max_dist = 14
+
+    return (max_dist - dist) / max_dist
+
+def run(episodes, is_training=True, render=False, learning_rate_a = 0.03, min_eps = 0.001, min_lr = 0.001):
 
     env = gym.make('FrozenLake-v1', map_name="8x8", is_slippery=True, render_mode='human' if render else None)
 
     if(is_training):
-        q = np.zeros((env.observation_space.n, env.action_space.n)) # init a 64 x 4 array
+        q = np.random.uniform(low=0, high=0.001, size=(env.observation_space.n, env.action_space.n)) # init a 64 x 4 array
+        #q = np.ones((env.observation_space.n, env.action_space.n)) # init a 64 x 4 array
     else:
         f = open('frozen_lake8x8.pkl', 'rb')
         q = pickle.load(f)
         f.close()
 
-    #discount_factor_g = 0.95 # gamma or discount rate. Near 0: more weight/reward placed on immediate state. Near 1: more on future state.
-    epsilon = 1         # 1 = 100% random actions
-
+    epsilon = MAX_EPS if is_training else 0.0       # 1 = 100% random actions
     rng = np.random.default_rng()   # random number generator
-
+    
     rewards_per_episode = np.zeros(episodes)
 
-    for i in tqdm(range(episodes), desc="Training" if is_training else "Evaluating", leave= False, unit="ep"):
+    best_success_rate = 0.0
+    current_rate = 0.0
+
+    epsilon_change = []
+    lr_change = []
+    current_lr = learning_rate_a
+    
+    phase_1_end = int(episodes * PHASE_1_RATIO)
+
+    pbar = tqdm(range(episodes), desc="Training" if is_training else "Evaluating", unit = "ep")
+    for i in pbar:
         state = env.reset()[0]  # states: 0 to 63, 0=top left corner,63=bottom right corner
         terminated = False      # True when fall in hole or reached goal
         truncated = False       # True when actions > 200
+        
+        if is_training:
+            progress = i /  phase_1_end
+            current_lr = max(min_lr, (learning_rate_a - (learning_rate_a - min_lr) * progress ** 0.7))
+
+            epsilon =max(min_eps, (MAX_EPS - (MAX_EPS - min_eps) * progress ** 3))
+
+            if i > phase_1_end :
+                epsilon = 0
+                current_lr = min_lr
+            epsilon_change.append(epsilon)
+            lr_change.append(current_lr)
+
 
         while(not terminated and not truncated):
             if is_training and rng.random() < epsilon:
@@ -53,66 +86,109 @@ def run(episodes, is_training=True, render=False,
                 action = np.argmax(q[state,:])
 
             new_state,reward,terminated,truncated,_ = env.step(action)
-            '''
-            if terminated and reward == 0:
-                reward = -1
-            '''
+            original_reward = reward
+
+
             if is_training:
-                q[state,action] = q[state,action] + learning_rate_a * (
-                    reward + discount_factor_g * np.max(q[new_state,:]) - q[state,action]
+                potential_current = get_potential(state)
+                if original_reward == 1:
+                    reward = original_reward
+                    
+                elif not terminated:
+                    potential_next = get_potential(new_state)
+                    shaping = DISCOUNT_FACTOR_G * potential_next - potential_current
+                    reward += shaping
+                else:
+                    reward = -potential_current * 1
+
+
+            if is_training:
+                if not terminated:
+                    target = reward + DISCOUNT_FACTOR_G * np.max(q[new_state,:])
+                else:
+                    target = reward
+                q[state,action] = q[state,action] + current_lr * (
+                    target - q[state,action]
                 )
 
             state = new_state
 
-        if is_training:
-            epsilon = max(epsilon - epsilon_decay_rate, min_exploration_rate)
-
-            if(epsilon<=min_exploration_rate):
-                learning_rate_a = end_learning_rate
-
-        if reward == 1:
+            
+        if original_reward == 1:
             rewards_per_episode[i] = 1
+        
+        if is_training:
+            window = 800
+            start_idx = max(0, i - window)
+            current_rate = np.mean(rewards_per_episode[start_idx:i+1])
 
+            if i > window and current_rate > best_success_rate:
+                best_success_rate = current_rate
+                f = open("frozen_lake8x8.pkl","wb")
+                pickle.dump(q, f)
+                f.close()
+
+            pbar.set_postfix({
+                'episode':f'{i}',
+                'epsilon':f'{epsilon:.5f}',
+                'lr': f'{current_lr:.4f}',
+                'success rate' : f'{100 * current_rate:.3f}%',
+                'best success' : f'{100 * best_success_rate:.5f}%',
+            })
+
+        
     env.close()
+    pbar.close()
 
-    sum_rewards = np.zeros(episodes)
-    for t in range(episodes):
-        sum_rewards[t] = np.sum(rewards_per_episode[max(0, t-100):(t+1)])
+    if is_training:
+        sum_rewards = np.zeros(episodes)
+        for t in range(episodes):
+            sum_rewards[t] = np.sum(rewards_per_episode[max(0, t-800):(t+1)])
     
-    plt.figure()
-    plt.plot(sum_rewards)
-    plt.savefig('frozen_lake8x8.png')
-    plt.close()
+        plt.figure()
+        plt.plot(sum_rewards)
+        plt.title('Training Progress')
+        plt.xlabel('Episodes')
+        plt.ylabel('Reward (Rolling Sum 800)')
+        plt.savefig('frozen_lake8x8.png')
+        print("Training graph saved to frozen_lake8x8.png")
+        plt.close()
+
+        plt.figure()
+        plt.plot(epsilon_change)
+        plt.title("Epsilon change")
+        plt.xlabel('Episodes')
+        plt.ylabel('Epsilon')
+        plt.savefig('epsilon_decay.png')
+        plt.close()
+
+        plt.figure()
+        plt.plot(lr_change)
+        plt.title("Learning rate change")
+        plt.xlabel('Episodes')
+        plt.ylabel('Learning')
+        plt.savefig('Learning rate decay.png')
+        plt.close()
 
     if is_training == False:
         success_rate = print_success_rate(rewards_per_episode)
         return success_rate
-
-    if is_training:
-        f = open("frozen_lake8x8.pkl","wb")
-        pickle.dump(q, f)
-        f.close()
-
+    
 def tune_hyperparameters():
     def objective(trial):
-        learning_rate_a = trial.suggest_float("learning_rate_a", 0.1, 0.7)
-        #learning_rate_a = 0.9
-        epsilon_decay_rate = trial.suggest_float("epsilon_decay_rate", 0.00001, 0.001)
-        min_exploration_rate = trial.suggest_float("min_exploration_rate", 0.00001, 0.00005)
-        #epsilon_decay_rate = (1 - min_exploration_rate) / (TRAIN_EPISODES * 0.8)
-        discount_factor_g = trial.suggest_float("discount_factor_g", 0.8, 0.999)
-        end_learning_rate = trial.suggest_float("end_learning_rate", 0.5, 0.999)
-        
+        learning_rate_a = trial.suggest_float("learning_rate_a", 0.02, 0.04)
+        min_lr = trial.suggest_float("min_lr", 0.00001, 0.00005)
+        min_eps = trial.suggest_float("min_eps", 0.001, 0.003)
+
         run(episodes=TRAIN_EPISODES, 
             is_training=True, render=False, 
-            learning_rate_a=learning_rate_a, 
-            epsilon_decay_rate=epsilon_decay_rate,            
-            min_exploration_rate=min_exploration_rate, 
-            discount_factor_g= discount_factor_g, end_learning_rate=end_learning_rate)
+            learning_rate_a=learning_rate_a,
+            min_lr=min_lr, min_eps=min_eps
+        )
 
         return run(episodes=EVAL_EPISODES, is_training=False, render=False)
 
-    study = optuna.create_study(direction='maximize', sampler =optuna.samplers.TPESampler())
+    study = optuna.create_study(direction='maximize', sampler = optuna.samplers.TPESampler())
     study.optimize(objective, n_trials = 50)
 
     print("\nBest parameters found:")
