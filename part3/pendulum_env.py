@@ -56,7 +56,7 @@ class PendulumEnv(gym.Env):
         super().__init__()
         
         # Create the problem model (Layer 1)
-        self.agent = PendulumAgent(fps=30)
+        self.agent = PendulumAgent(fps=30, render_mode=render_mode)
         
         # Define discrete action space (5 actions)
         # Note for implementation: (in Pendulum Agent): see action space in the beginning of this class

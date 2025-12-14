@@ -40,14 +40,14 @@ class PendulumAgent:
         - 5 discrete actions
     """
     
-    def __init__(self, fps=30):
+    def __init__(self, fps=30, render_mode=None):
         """
         Initialize the Pendulum agent.
         
         Args:
             fps (int): Frames per second for pygame rendering
         """
-        self.env = gym.make('Pendulum-v1')
+        self.env = gym.make('Pendulum-v1', render_mode=render_mode)
         
         # Discretization parameters
         self.angle_bins = 20
