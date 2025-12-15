@@ -1,3 +1,32 @@
+# Project Overview
+The inverted pendulum swingup problem is based on the classic problem in control theory, consisting of a pendulum attached at one end to a fixed point that starts in a random position, and the other end being free. The goal of the problem is to apply torque on  the free end to swing it into an upright position, with its center of gravity right above the fixed point. 
+
+# How to Run
+```bash
+# Train the agent
+python train_pendulum.py --train --episodes 2000
+
+# Render and visualize performance
+python train_pendulum.py --render --episodes 10
+```
+
+# Project Dependencies
+```
+Package              Version
+-------------------- -------
+matplotlib           3.10.0
+gymnasium            1.2.2  
+numpy                2.2.0
+pygame               2.6.1
+```
+
+
+# Contribution List
+Agent Development -> B1230400 家睿
+Environment Development -> B1230400 陳聖繹
+Training Development -> B123040061 陳偉財
+
+---------------------------------------------------
 # Group Project Setup Guide
 
 ## Project Content
