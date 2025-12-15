@@ -90,7 +90,7 @@ python mountain_car.py --render --episodes 10
 
 ### **Part 2: Frozen Lake** ❄️
 - **Description**: Navigate a frozen lake to reach the goal while avoiding holes. 
-- **Goal**: Demonstrate **Hyperparameter Tuning** (Optuna), **Reward Shaping**, and **Two-phase Training** strategies to achieve a stable success rate > 70%.
+- **Goal**: Train an agent on FrozenLake (8×8, slippery) for 15,000 episodes with a maximum of 200 steps per episode, and achieve a stable success rate above 70%.
 
 ```bash
 cd part2
