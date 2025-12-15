@@ -22,9 +22,9 @@ pygame               2.6.1
 
 
 # Contribution List
-Agent Development -> B1230400 家睿
-Environment Development -> B1230400 陳聖繹
-Training Development -> B123040061 陳偉財
+Agent Development -> B123040040 余家睿
+Environment Development -> B123040037 陳聖繹
+Training Development, Reflection Report -> B123040061 陳偉財
 
 ---------------------------------------------------
 # Group Project Setup Guide
