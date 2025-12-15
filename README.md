@@ -1,5 +1,7 @@
 # Project Overview
-The inverted pendulum swingup problem is based on the classic problem in control theory, consisting of a pendulum attached at one end to a fixed point that starts in a random position, and the other end being free. The goal of the problem is to apply torque on  the free end to swing it into an upright position, with its center of gravity right above the fixed point. 
+The objective of this project was to develop a Reinforcement Learning (RL) agent capable of solving the classic Inverted Pendulum control theory problem.
+
+The Inverted Pendulum problem system consists of a pendulum that starts in a random position with one end attached to a fixed point, and the other one being free. The goal that the agent must achieve is to apply torque on the free end to swing it into a balanced upright position.
 
 # How to Run
 ```bash
@@ -22,9 +24,9 @@ pygame               2.6.1
 
 
 # Contribution List
-Agent Development -> B123040040 余家睿
-Environment Development -> B123040037 陳聖繹
-Training Development, Reflection Report -> B123040061 陳偉財
+- Agent Development -> B123040040 余家睿
+- Environment Development -> B123040037 陳聖繹
+- Training Development, Reflection Report -> B123040061 陳偉財
 
 ---------------------------------------------------
 # Group Project Setup Guide
