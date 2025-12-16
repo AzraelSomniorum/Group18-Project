@@ -150,7 +150,7 @@ class ExperimentRunner:
         # Initialize Agent (20x20 bins are hardcoded to match the Env)
         state_shape = (20, 20) 
         num_actions = env.action_space.n
-        agent = QLearningAgent(state_shape, num_actions)
+        agent = QLearningAgent(state_shape, num_actions) # Composition: Inside ExperimentRunner.run()
         
         # Load existing model if we are running in evaluation mode
         model_path = 'pendulum_q_table.pkl'
