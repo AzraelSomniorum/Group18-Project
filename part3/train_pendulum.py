@@ -13,8 +13,8 @@ from abc import ABC, abstractmethod
 # Import the custom environment
 import pendulum_env
 
-# Action Selection Strategies -----------------------------------
-class ExplorationStrategy(ABC):
+# Action Selection Strategies ----- Polymorphism
+class ExplorationStrategy(ABC): # Template
     """
     Abstract interface for action selection.
     Subclasses define specific behaviors for training (exploration) vs evaluation (exploitation).
@@ -29,22 +29,24 @@ class EpsilonGreedy(ExplorationStrategy):
     otherwise selects the action with the highest Q-value.
     """
     def __init__(self, epsilon):
-        self.epsilon = epsilon
+        self.epsilon = epsilon # Stores the probability (e.g., 0.1 or 10%)
 
     def select_action(self, q_values, action_space):
+        # Generate a random number between 0.0 and 1.0. 
+        # If it is less than epsilon (e.g., 0.1), we explore.
         if np.random.random() < self.epsilon:
-            return action_space.sample()
-        return np.argmax(q_values)
+            return action_space.sample() # Return a random action (0-4)
+        return np.argmax(q_values) # Otherwise find the index of the highest value in the Q-table row.
 
-class Greedy(ExplorationStrategy):
+class Greedy(ExplorationStrategy): # Eval
     """
     Implements pure greedy strategy: always selects the action with the highest Q-value.
     Used primarily for evaluating the trained agent.
     """
     def select_action(self, q_values, action_space):
-        return np.argmax(q_values)
+        return np.argmax(q_values) # Always pick best action
 
-# Agent Interface --------------------------
+# Agent Interface ------- Abstraction
 class BaseAgent(ABC):
     """
     Abstract base class defining the required methods for a Reinforcement Learning agent.
@@ -67,15 +69,15 @@ class BaseAgent(ABC):
         pass
 
 # Q-Learning Implementation --------------------------------
-class QLearningAgent(BaseAgent):
+class QLearningAgent(BaseAgent): # Inherits from base agent
     """
     Tabular Q-Learning agent implementation.
     Manages the Q-table and applies the Bellman update rule.
     """
     def __init__(self, state_shape, num_actions, alpha=0.9, gamma=0.95):
         # Initialize Q-table with zeros
-        # Shape: (angle_bins, velocity_bins, num_actions)
-        self._q_table = np.zeros(state_shape + (num_actions,))
+        # Shape: (angle_bins, velocity_bins, num_actions), 20 x 20 x 5
+        self._q_table = np.zeros(state_shape + (num_actions,)) # Encapsulation
         self.alpha = alpha  # Learning rate
         self.gamma = gamma  # Discount factor
         self.num_actions = num_actions
@@ -84,7 +86,7 @@ class QLearningAgent(BaseAgent):
         """
         Delegates action selection to the provided strategy.
         """
-        # state is expected to be [angle_bin, velocity_bin]
+        # state is expected to be [angle_bin, velocity_bin], fetch values
         angle_bin, velocity_bin = state
         q_values = self._q_table[angle_bin, velocity_bin, :]
         
@@ -93,7 +95,7 @@ class QLearningAgent(BaseAgent):
             def __init__(self, n): self.n = n
             def sample(self): return np.random.randint(0, self.n)
             
-        return strategy.select_action(q_values, ActionSpace(self.num_actions))
+        return strategy.select_action(q_values, ActionSpace(self.num_actions)) # Choose exploration strategy
 
     def update(self, state, action, reward, next_state):
         """
@@ -102,13 +104,13 @@ class QLearningAgent(BaseAgent):
         angle, vel = state
         next_angle, next_vel = next_state
         
-        current_q = self._q_table[angle, vel, action]
-        max_next_q = np.max(self._q_table[next_angle, next_vel, :])
+        current_q = self._q_table[angle, vel, action] # Get the current guess (Old Q)
+        max_next_q = np.max(self._q_table[next_angle, next_vel, :]) # Find the best possible score from the NEXT state (Max Q')
         
-        # Calculate TD Target
+        # Calculate the Target (Reward + discounted future)
         target = reward + self.gamma * max_next_q
         
-        # Update Q-value
+        # Update the table (move Old Q slightly towards Target)
         self._q_table[angle, vel, action] += self.alpha * (target - current_q)
 
     def save(self, filepath):
@@ -137,7 +139,7 @@ class ExperimentRunner:
         self.rewards_history = []
         
         # Training hyperparameters
-        self.epsilon_start = 1.0
+        self.epsilon_start = 1.0 # Start at 1.0 (100% random), go down to 0.01
         self.epsilon_min = 0.01
         self.epsilon_decay = 2.0 / episodes
 
@@ -145,8 +147,7 @@ class ExperimentRunner:
         # Initialize environment
         env = gym.make(self.env_id, render_mode=self.render_mode)
         
-        # Initialize Agent
-        # Note: Bins are hardcoded to match the environment implementation in pendulum_env.py
+        # Initialize Agent (20x20 bins are hardcoded to match the Env)
         state_shape = (20, 20) 
         num_actions = env.action_space.n
         agent = QLearningAgent(state_shape, num_actions)
@@ -167,9 +168,8 @@ class ExperimentRunner:
 
         # Main Episode Loop
         for episode in range(self.episodes):
-            state, _ = env.reset()
-            # Ensure state is a tuple of integers for array indexing
-            state = tuple(state.astype(int))
+            state, _ = env.reset() # Restart Pendulum
+            state = tuple(state.astype(int)) # Ensure state is a tuple of integers for array indexing
             
             terminated = False
             truncated = False
